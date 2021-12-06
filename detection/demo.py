@@ -17,6 +17,20 @@ from grad_cam import GradCAM, GradCamPlusPlus
 from skimage import io
 from torch import nn
 
+
+import sys
+sys.path.append('/content/Grad-CAM.pytorch/frcnn/')
+
+import os
+import torch as t
+from utils.config import opt
+from model import FasterRCNNVGG16
+from trainer import FasterRCNNTrainer
+from data.util import  read_image
+from utils.vis_tool import vis_bbox
+from utils import array_tool as at
+
+
 # constants
 WINDOW_NAME = "COCO detections"
 
@@ -173,9 +187,13 @@ def main(args):
     checkpointer = DetectionCheckpointer(model)
     checkpointer.load(cfg.MODEL.WEIGHTS)
 
+    faster_rcnn = FasterRCNNVGG16(n_fg_class=1)
+    trainer = FasterRCNNTrainer(faster_rcnn).cuda()
+    trainer.load('/content/fasterrcnn_12051807_1.0000000000000002')
+
     # 加载图像
     path = os.path.expanduser(args.input)
-    original_image = read_image(path, format="BGR")
+    original_image = read_image(path)
     height, width = original_image.shape[:2]
     transform_gen = T.ResizeShortestEdge(
         [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
@@ -186,8 +204,8 @@ def main(args):
     inputs = {"image": image, "height": height, "width": width}
 
     # Grad-CAM
-    layer_name = get_last_conv_name(model)
-    grad_cam = GradCAM(model, layer_name)
+    layer_name = get_last_conv_name(trainer)
+    grad_cam = GradCAM(trainer, layer_name)
     mask, box, class_id = grad_cam(inputs)  # cam mask
     grad_cam.remove_handlers()
 

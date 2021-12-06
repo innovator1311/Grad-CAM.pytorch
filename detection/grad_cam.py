@@ -16,7 +16,7 @@ class GradCAM(object):
     """
 
     def __init__(self, net, layer_name):
-        self.net = net
+        self.net = net.faster_rcnn
         self.layer_name = layer_name
         self.feature = None
         self.gradient = None
